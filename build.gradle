@@ -1,0 +1,73 @@
+
+buildscript {
+	ext{
+		springBootVersion ='3.3.5-SNAPSHOT'
+	}
+
+	repositories{
+		mavenCentral()
+		google()
+		gradlePluginPortal()
+		maven{
+			url "https://plugins.gradle.org/m2/"
+		}
+
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:3.3.5")
+		classpath("com.palantir.gradle.docker:gradle-docker:0.36.0")
+	}
+}
+
+
+plugins {
+	id 'java'
+	id "org.springframework.boot" version "3.3.5"
+	id 'io.spring.dependency-management' version '1.1.6'
+	id ("com.palantir.docker") version '0.36.0'
+}
+
+
+group = 'sivaldomo'
+
+version = '0.0.1-SNAPSHOT'
+
+
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+	maven { url 'https://repo.spring.io/milestone' }
+	maven { url 'https://repo.spring.io/snapshot' }
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+}
+tasks.register('unpack', Copy) {
+	dependsOn bootJar
+	from(zipTree(tasks.bootJar.outputs.files.singleFile))
+	into("build/dependency")
+}
+
+
+docker {
+	name "${project.group}/${project.name}"
+	buildx true
+	platform 'linux/amd64'
+	copySpec.from(tasks.unpack.outputs).into('dependency')
+	buildArgs(['DEPENDENCY' : "dependency"])
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
